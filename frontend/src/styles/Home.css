@@ -1,0 +1,7 @@
+.homePage {
+  height: 100vh;
+  background: var(--bg-primary);
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}

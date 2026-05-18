@@ -1,0 +1,164 @@
+/* ===== CREATE POST MODAL ===== */
+
+.createPostModalBg {
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalBgIn 0.25s ease both;
+}
+@keyframes modalBgIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.createPostContainer {
+  z-index: 400;
+  padding: 1.8rem;
+  border-radius: var(--radius-xl);
+  width: 440px;
+  max-width: 92vw;
+  height: fit-content;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg-glass);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid var(--border);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 60px rgba(124,107,255,0.08);
+  position: relative;
+  animation: modalCardIn 0.4s var(--ease-spring) both;
+}
+@keyframes modalCardIn {
+  from { opacity: 0; transform: scale(0.88) translateY(30px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.closeCreatePost {
+  float: right;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.4rem;
+  transition: color 0.2s, transform 0.3s var(--ease-spring);
+  padding: 2px;
+}
+.closeCreatePost:hover {
+  color: var(--accent-2);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.createPostTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+.createPostHr {
+  margin: 0 0 1.2rem;
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  opacity: 0.3;
+}
+
+.form-select {
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.3s;
+}
+.form-select:focus { border-color: var(--accent) !important; }
+.form-select option { background: var(--bg-secondary); color: var(--text-primary); }
+
+.uploadBox { width: 100%; }
+
+.uploadBox #uploadPostFile { width: 100%; }
+
+#uploadPostFile::-webkit-file-upload-button { display: none; }
+#uploadPostFile::before {
+  content: '↑ Upload Image / Video';
+  display: inline-block;
+  background: var(--bg-input);
+  border: 1px dashed var(--border-accent);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  outline: none;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 0.88rem;
+  color: var(--accent);
+  margin-right: 10px;
+  transition: background 0.25s, border-color 0.25s;
+}
+#uploadPostFile:hover::before {
+  background: rgba(124,107,255,0.1);
+  border-color: var(--accent);
+}
+
+.descriptionInput input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.descriptionInput input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124,107,255,0.12);
+  outline: none;
+}
+.descriptionInput label, .postLocation label {
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.createPostBody form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+.createPostBody form button {
+  padding: 10px 36px;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.92rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+  letter-spacing: 0.3px;
+}
+.createPostBody form button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(124,107,255,0.5);
+}
+.createPostBody form button:active { transform: scale(0.97); }
+
+@media only screen and (max-width: 600px) {
+  .createPostContainer {
+    width: 92vw;
+    padding: 1.4rem;
+  }
+}

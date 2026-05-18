@@ -1,0 +1,122 @@
+/* ===== NAVBAR — Premium floating glass ===== */
+
+.Navbar {
+  display: flex;
+  gap: 4px;
+  width: 280px;
+  position: fixed;
+  right: 20px;
+  top: 12px;
+  height: 56px;
+  z-index: 200;
+  align-items: center;
+  justify-content: space-evenly;
+  background: rgba(6, 6, 14, 0.75);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 0 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(124,107,255,0.06);
+  animation: navbarSlideIn 0.8s var(--ease-out-expo) 0.1s both;
+}
+@keyframes navbarSlideIn {
+  from { transform: translateY(-80px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.btns {
+  width: 36px;
+  height: 36px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  transition: color 0.25s, background 0.25s, transform 0.3s var(--ease-spring);
+  position: relative;
+}
+.btns:hover {
+  color: var(--accent);
+  background: rgba(124,107,255,0.12);
+  transform: translateY(-2px) scale(1.1);
+}
+.btns:active {
+  transform: scale(0.92);
+  color: var(--accent-2);
+}
+
+/* Active ripple glow effect */
+.btns::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.btns:active::after { opacity: 0.12; }
+
+.Notifybtn { width: 38px; height: 38px; }
+.chatbtn   { width: 34px; height: 34px; }
+
+.Navbar img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--border-accent);
+  cursor: pointer;
+  object-fit: cover;
+  transition: border-color 0.3s, transform 0.3s var(--ease-spring), box-shadow 0.3s;
+}
+.Navbar img:hover {
+  border-color: var(--accent);
+  transform: scale(1.12);
+  box-shadow: 0 0 16px rgba(124,107,255,0.5);
+}
+
+.r-button {
+  height: 3rem;
+  width: 80%;
+  align-self: center;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+}
+.r-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(124,107,255,0.4);
+}
+
+@media screen and (max-width: 900px) {
+  .Navbar { width: 240px; }
+}
+
+@media screen and (max-width: 500px) {
+  .Navbar {
+    width: 100%;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    height: 64px;
+    border-radius: 0;
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+    padding: 0 24px;
+    animation: navbarSlideUp 0.6s var(--ease-out-expo) both;
+  }
+  @keyframes navbarSlideUp {
+    from { transform: translateY(80px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  .btns { width: 38px; height: 38px; }
+  .Notifybtn { width: 40px; height: 40px; }
+  .Navbar img { width: 36px; height: 36px; }
+}
