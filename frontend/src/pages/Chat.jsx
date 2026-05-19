@@ -1,23 +1,30 @@
-import React from 'react'
-import '../styles/Chat.css'
-import Navbar from '../components/Navbar'
-import Sidebar from '../components/chat/Sidebar'
-import UserChat from '../components/chat/UserChat'
+import React from 'react';
+import Navbar from '../components/Navbar';
+import Sidebar from '../components/chat/Sidebar';
+import UserChat from '../components/chat/UserChat';
 
 const Chat = () => {
   return (
-    <div className='chatPage'>
-      {/* <HomeLogo /> */}
+    <div style={{
+      background: '#080808',
+      minHeight: '100vh',
+      paddingBottom: 72, // space for fixed Navbar
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
       <Navbar />
 
-    <div className="home">
-
-      <Sidebar  />
-      <UserChat />
-      
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        height: 'calc(100vh - 72px)',
+        gap: 0,
+      }}>
+        <Sidebar />
+        <UserChat />
+      </div>
     </div>
-    </div>
-  )
-}
+  );
+};
 
-export default Chat
+export default Chat;

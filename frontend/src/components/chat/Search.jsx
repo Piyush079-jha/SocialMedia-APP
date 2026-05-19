@@ -1,54 +1,67 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { TbSearch } from 'react-icons/tb'
-import { GeneralContext } from '../../context/GeneralContextProvider';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const Search = () => {
+const Search = ({ searchedUser, setSearchedUser }) => {
+  const navigate = useNavigate();
 
-  const {dispatch, socket} = useContext(GeneralContext)
-  const [search, setSearch] = useState('');
-  const userId = localStorage.getItem('userId');
-  const [user, setUser] = useState();
-  const [err, setErr] = useState(false);
-
-  const handleSearch = async (e) =>{
-    e.preventDefault();
-    setErr(false);
-    setUser();
-    await socket.emit('chat-user-searched', {ownId: userId,username: search});
-    setSearch('')
-  }
-
-  useEffect(()=>{
-    socket.on('searched-chat-user', async ({user})=>{
-      setUser(user);
-    });
-    socket.on('no-searched-chat-user', async ()=>{
-      setErr(true);
-    });
-  },[socket])
-
-  const handleSelect = async (user) =>{
-    await dispatch({type:"CHANGE_USER", payload: user});
-    setUser();
-  }
+  if (!searchedUser) return null;
 
   return (
-    <div className='search'>
-      <div className="searchform">
-        <input type="text" placeholder='Search'
-                 onChange={(e)=> {setSearch(e.target.value)}} value={search} />
-        <div className="s-icon" onClick={handleSearch}>
-          <TbSearch />
+    <div style={{
+      position: 'absolute',
+      top: '64px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: '#0f1525',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: '12px',
+      padding: '8px',
+      zIndex: 200,
+      minWidth: '240px',
+      boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+    }}>
+      <div
+        onClick={() => { navigate(`/profile/${searchedUser._id}`); setSearchedUser(); }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '10px 12px',
+          borderRadius: '10px',
+          cursor: 'pointer',
+          background: '#151d30',
+          border: '1px solid rgba(255,255,255,0.06)',
+          transition: 'background 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(74,123,255,0.1)'}
+        onMouseLeave={e => e.currentTarget.style.background = '#151d30'}
+      >
+        <img
+          src={searchedUser.profilePic}
+          alt=""
+          style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            objectFit: 'cover',
+            border: '1.5px solid rgba(74,123,255,0.5)',
+          }}
+        />
+        <div>
+          <span style={{
+            fontSize: '13.5px',
+            color: '#ffffff',
+            fontWeight: 500,
+            display: 'block',
+            letterSpacing: '0.01em',
+          }}>
+            {searchedUser.username}
+          </span>
+          <span style={{ fontSize: '11px', color: '#3d4a63' }}>View profile</span>
         </div>
-      </div> 
-
-      {err && <span>No User Found!!</span>}
-
-      {user &&  <div className="userInfo" onClick={() => handleSelect(user)} >
-                  <img src={user.profilePic} alt="" />
-                  <div className="userChatInfo">  <span>{user.username}</span> </div>
-                </div>
-              }
+      </div>
     </div>
-)}
-export default Search
+  );
+};
+
+export default Search;
