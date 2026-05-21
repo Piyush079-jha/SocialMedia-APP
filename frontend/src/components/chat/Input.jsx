@@ -1,127 +1,283 @@
-import React, { useContext, useState } from 'react'
-import { BiImageAdd } from 'react-icons/bi'
-import { GeneralContext } from '../../context/GeneralContextProvider'
+import React, { useContext, useRef, useState, useCallback } from 'react';
+import { BiImageAdd } from 'react-icons/bi';
+import { GeneralContext } from '../../context/GeneralContextProvider';
 import { v4 as uuid } from 'uuid';
-import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
+import { getDownloadURL, ref as storageRef, uploadBytesResumable } from 'firebase/storage';
 import { storage } from '../../firebase';
 
-const Input = () => {
+const MAX_FILE_SIZE_MB = 10;
 
+const Input = () => {
   const { socket, chatData } = useContext(GeneralContext);
   const [text, setText] = useState('');
   const [file, setFile] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState();
+  const [preview, setPreview] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [isSending, setIsSending] = useState(false);
+  const fileInputRef = useRef(null);
   const userId = localStorage.getItem('userId');
 
-  const handleSend = async () => {
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    if (!selected) return;
+
+    if (selected.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      alert(`File too large. Max size is ${MAX_FILE_SIZE_MB}MB.`);
+      return;
+    }
+
+    setFile(selected);
+    setPreview(URL.createObjectURL(selected));
+  };
+
+  const clearFile = useCallback(() => {
+    setFile(null);
+    setPreview(null);
+    setUploadProgress(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  const emitMessage = useCallback(async ({ fileUrl = '' } = {}) => {
+    const date = new Date();
+    await socket.emit('new-message', {
+      chatId: chatData.chatId,
+      id: uuid(),
+      text: text.trim(),
+      file: fileUrl,
+      senderId: userId,
+      date,
+    });
+    setText('');
+    clearFile();
+    setIsSending(false);
+  }, [socket, chatData.chatId, text, userId, clearFile]);
+
+  const handleSend = useCallback(async () => {
+    const hasContent = text.trim() || file;
+    if (!hasContent || isSending) return;
+
+    setIsSending(true);
+
     if (file) {
-      const storageRef = ref(storage, uuid());
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on('state_changed',
-        (snapshot) => { setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100); },
-        (error) => { console.log(error); },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-            try {
-              let date = new Date();
-              await socket.emit('new-message', { chatId: chatData.chatId, id: uuid(), text, file: downloadURL, senderId: userId, date });
-              setUploadProgress();
-              setText('');
-              setFile(null);
-            } catch (err) { console.log(err); }
-          });
+      const fileRef = storageRef(storage, `chat/${uuid()}`);
+      const uploadTask = uploadBytesResumable(fileRef, file);
+
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(Math.floor(pct));
+        },
+        (error) => {
+          console.error('Upload failed:', error);
+          setIsSending(false);
+          setUploadProgress(null);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          await emitMessage({ fileUrl: downloadURL });
+          setUploadProgress(null);
         }
       );
     } else {
-      let date = new Date();
-      await socket.emit('new-message', { chatId: chatData.chatId, id: uuid(), text, file: '', senderId: userId, date });
-      setText('');
+      await emitMessage();
+    }
+  }, [text, file, isSending, emitMessage]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
+  const canSend = (text.trim() || file) && !isSending;
+
   return (
     <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px',
-      padding: '14px 20px',
-      background: '#0f1525',
-      borderTop: '1px solid rgba(255,255,255,0.06)',
+      flexShrink: 0,
+      background: '#0f1225',
+      borderTop: '1px solid rgba(255,255,255,0.05)',
+      padding: '0',
     }}>
-
-      <input
-        type="text"
-        placeholder="Write a message..."
-        onChange={e => setText(e.target.value)}
-        value={text}
-        onKeyDown={e => e.key === 'Enter' && handleSend()}
-        style={{
-          flex: 1,
-          background: '#151d30',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: '12px',
-          padding: '11px 16px',
-          fontSize: '13.5px',
-          color: '#ffffff',
-          fontFamily: 'inherit',
-          outline: 'none',
-          letterSpacing: '0.01em',
-          transition: 'border-color 0.2s',
-        }}
-        onFocus={e => e.target.style.borderColor = 'rgba(74,123,255,0.5)'}
-        onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.06)'}
-      />
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <input type="file" style={{ display: 'none' }} id="file" onChange={e => setFile(e.target.files[0])} />
-        <label
-          htmlFor="file"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            cursor: 'pointer',
-            padding: '8px',
-            borderRadius: '10px',
-            border: '1px solid rgba(255,255,255,0.06)',
-            background: 'transparent',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(74,123,255,0.5)'; e.currentTarget.style.background = 'rgba(74,123,255,0.08)'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = 'transparent'; }}
-        >
-          <BiImageAdd size={19} color="#8892aa" />
-          {uploadProgress && (
-            <span style={{ fontSize: '11px', color: '#4a7bff', fontWeight: 600 }}>
-              {Math.floor(uploadProgress)}%
-            </span>
+      {/* File preview strip */}
+      {preview && (
+        <div style={{
+          padding: '10px 16px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <img
+              src={preview}
+              alt="preview"
+              style={{
+                width: '52px',
+                height: '52px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+                border: '1px solid rgba(109,86,255,0.25)',
+              }}
+            />
+            <button
+              onClick={clearFile}
+              aria-label="Remove attachment"
+              style={{
+                position: 'absolute',
+                top: '-6px',
+                right: '-6px',
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                background: '#6d56ff',
+                border: 'none',
+                color: '#fff',
+                fontSize: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          {uploadProgress !== null && (
+            <div style={{
+              flex: 1,
+              height: '3px',
+              background: 'rgba(255,255,255,0.08)',
+              borderRadius: '99px',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${uploadProgress}%`,
+                background: 'linear-gradient(90deg, #6d56ff, #4a35d4)',
+                transition: 'width 0.2s',
+                borderRadius: '99px',
+              }} />
+            </div>
           )}
-        </label>
+        </div>
+      )}
 
-        <button
-          onClick={handleSend}
+      {/* Input row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '12px 16px',
+      }}>
+        {/* Text input */}
+        <textarea
+          rows={1}
+          placeholder="Write a message..."
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
           style={{
-            height: '38px',
-            padding: '0 22px',
-            background: 'linear-gradient(135deg, #4a7bff, #2d5ce8)',
-            color: '#ffffff',
-            border: 'none',
+            flex: 1,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
             borderRadius: '12px',
-            fontSize: '13px',
-            fontWeight: 600,
-            cursor: 'pointer',
+            padding: '10px 15px',
+            fontSize: '13.5px',
+            color: '#e8e8ff',
             fontFamily: 'inherit',
-            letterSpacing: '0.02em',
-            boxShadow: '0 4px 20px rgba(74,123,255,0.3)',
-            transition: 'opacity 0.2s, transform 0.1s',
+            outline: 'none',
+            letterSpacing: '0.01em',
+            resize: 'none',
+            lineHeight: 1.5,
+            maxHeight: '120px',
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
+            transition: 'border-color 0.2s, background 0.2s',
           }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
-          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          Send
-        </button>
+          onFocus={e => {
+            e.target.style.borderColor = 'rgba(109,86,255,0.4)';
+            e.target.style.background = 'rgba(109,86,255,0.04)';
+          }}
+          onBlur={e => {
+            e.target.style.borderColor = 'rgba(255,255,255,0.07)';
+            e.target.style.background = 'rgba(255,255,255,0.04)';
+          }}
+        />
+
+        {/* Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          {/* File picker */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            id="chat-file"
+            onChange={handleFileChange}
+          />
+          <label
+            htmlFor="chat-file"
+            title="Attach image"
+            style={{
+              width: '38px',
+              height: '38px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              borderRadius: '10px',
+              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'transparent',
+              transition: 'all 0.18s',
+              color: '#5a6280',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'rgba(109,86,255,0.4)';
+              e.currentTarget.style.background = 'rgba(109,86,255,0.08)';
+              e.currentTarget.style.color = '#9d8aff';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = '#5a6280';
+            }}
+          >
+            <BiImageAdd size={18} />
+          </label>
+
+          {/* Send button */}
+          <button
+            onClick={handleSend}
+            disabled={!canSend}
+            title="Send message (Enter)"
+            style={{
+              height: '38px',
+              padding: '0 20px',
+              background: canSend
+                ? 'linear-gradient(135deg, #6d56ff 0%, #4a35d4 100%)'
+                : 'rgba(255,255,255,0.05)',
+              color: canSend ? '#ffffff' : '#3a4260',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: canSend ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+              letterSpacing: '0.03em',
+              boxShadow: canSend ? '0 4px 20px rgba(109,86,255,0.3)' : 'none',
+              transition: 'all 0.18s',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { if (canSend) e.currentTarget.style.opacity = '0.88'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+            onMouseDown={e => { if (canSend) e.currentTarget.style.transform = 'scale(0.96)'; }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            {isSending ? '…' : 'Send'}
+          </button>
+        </div>
       </div>
     </div>
   );
