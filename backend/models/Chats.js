@@ -7,7 +7,8 @@ const chatSchema = mongoose.Schema({
         require: true
     },
     messages: {
-        type: Array
+        type: Array,
+        default: []
     }
 });
 

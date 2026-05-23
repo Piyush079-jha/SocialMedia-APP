@@ -20,7 +20,8 @@ const storySchema = new mongoose.Schema({
         type: String
     },
     viewers: {
-        type: Array
+        type: Array,
+        default: []
     }
 
 }, {timestamps: true});

@@ -1,91 +1,104 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
-import Message from './Message';
+import React, { useContext, useEffect, useRef } from 'react';
 import { GeneralContext } from '../../context/GeneralContextProvider';
 
-const Messages = () => {
-  const { socket, chatData } = useContext(GeneralContext);
-  const [messages, setMessages] = useState([]);
-  const bottomRef = useRef(null);
+const Message = ({ message }) => {
+  const { chatData } = useContext(GeneralContext);
+  const ref = useRef();
+  const date = new Date(message.date);
+  const userId = localStorage.getItem('userId');
+  const isOwner = message.senderId === userId;
 
   useEffect(() => {
-    const handleMessagesUpdated = ({ chat }) => {
-      if (chat?.messages) setMessages(chat.messages);
-    };
+    ref.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [message]);
 
-    const handleNewMessage = () => {
-      if (chatData.chatId) {
-        socket.emit('update-messages', { chatId: chatData.chatId });
-      }
-    };
-
-    socket.on('messages-updated', handleMessagesUpdated);
-    socket.on('message-from-user', handleNewMessage);
-
-    return () => {
-      socket.off('messages-updated', handleMessagesUpdated);
-      socket.off('message-from-user', handleNewMessage);
-    };
-  }, [socket, chatData.chatId]);
-
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const timeStr = date.getHours() === 0
+    ? '12:' + String(date.getMinutes()).padStart(2, '0') + ' AM'
+    : date.getHours() < 12
+    ? date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0') + ' AM'
+    : date.getHours() === 12
+    ? '12:' + String(date.getMinutes()).padStart(2, '0') + ' PM'
+    : (date.getHours() - 12) + ':' + String(date.getMinutes()).padStart(2, '0') + ' PM';
 
   return (
     <div
-      role="log"
-      aria-live="polite"
-      aria-label="Chat messages"
+      ref={ref}
       style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '24px 20px 8px',
         display: 'flex',
-        flexDirection: 'column',
         gap: '12px',
-        background: '#0c0e1c',
-        scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(109,86,255,0.2) transparent',
+        alignItems: 'flex-end',
+        maxWidth: '75%',
+        alignSelf: isOwner ? 'flex-end' : 'flex-start',
+        flexDirection: isOwner ? 'row-reverse' : 'row',
+        animation: 'fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
       }}
     >
-      {messages.length === 0 && (
-        <div style={{
-          flex: 1,
+      <img
+        src={isOwner ? (localStorage.getItem('profilePic') || 'https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png') : chatData?.user?.profilePic}
+        alt=""
+        style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          objectFit: 'cover',
+          border: isOwner ? '1.5px solid var(--accent, #7c6bff)' : '1.5px solid rgba(255,255,255,0.08)',
+          boxShadow: isOwner ? '0 0 10px rgba(124, 107, 255, 0.25)' : 'none',
+          flexShrink: 0,
+        }}
+      />
+      <div
+        style={{
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           flexDirection: 'column',
-          gap: '10px',
-          color: '#3a4260',
-          fontSize: '13px',
-          letterSpacing: '0.02em',
-          userSelect: 'none',
-        }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            background: 'rgba(109,86,255,0.08)',
-            border: '1px solid rgba(109,86,255,0.15)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '22px',
-          }}>
-            💬
-          </div>
-          Say hello!
+          gap: '6px',
+          alignItems: isOwner ? 'flex-end' : 'flex-start',
+        }}
+      >
+        <div
+          style={{
+            padding: '12px 18px',
+            borderRadius: '20px',
+            borderBottomLeftRadius: isOwner ? '20px' : '4px',
+            borderBottomRightRadius: isOwner ? '4px' : '20px',
+            fontSize: '13.5px',
+            lineHeight: 1.6,
+            letterSpacing: '0.01em',
+            background: isOwner ? 'linear-gradient(135deg, #7c6bff, #5142e6)' : '#16192b',
+            border: isOwner ? 'none' : '1px solid rgba(255,255,255,0.08)',
+            color: isOwner ? '#ffffff' : '#b2bbd6',
+            boxShadow: isOwner ? '0 4px 15px rgba(124, 107, 255, 0.3)' : 'none',
+          }}
+        >
+          {message.text && <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{message.text}</p>}
+          {message.file && (
+            <img
+              src={message.file}
+              alt=""
+              style={{
+                display: 'block',
+                maxWidth: '240px',
+                maxHeight: '180px',
+                borderRadius: '12px',
+                marginTop: message.text ? '8px' : 0,
+                border: '1px solid rgba(255,255,255,0.1)',
+                objectFit: 'cover',
+              }}
+            />
+          )}
         </div>
-      )}
-
-      {messages.map((message) => (
-        <Message message={message} key={message.id} />
-      ))}
-
-      <div ref={bottomRef} />
+        <span
+          style={{
+            fontSize: '10px',
+            color: '#55658c',
+            padding: '0 6px',
+            letterSpacing: '0.02em',
+          }}
+        >
+          {timeStr}
+        </span>
+      </div>
     </div>
   );
 };
 
-export default Messages;
+export default Message;

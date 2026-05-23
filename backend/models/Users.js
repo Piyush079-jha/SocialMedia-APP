@@ -21,13 +21,16 @@ const userSchema = mongoose.Schema({
         type: String
     },
     posts: {
-        type: Array
+        type: Array,
+        default: []
     },
     followers: {
-        type: Array
+        type: Array,
+        default: []
     },
     following: {
-        type: Array
+        type: Array,
+        default: []
     }
 });
 

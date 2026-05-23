@@ -1,92 +1,72 @@
-import React, { useContext, useState } from 'react';
-import { BiHomeAlt } from "react-icons/bi";
-import { BsChatSquareText } from "react-icons/bs";
-import { CgAddR } from "react-icons/cg";
-import { TbNotification } from "react-icons/tb";
+import React, { useContext } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Home, Compass, Film, User, Plus } from 'lucide-react';
 import { GeneralContext } from '../context/GeneralContextProvider';
-import { useNavigate } from 'react-router-dom';
 
-const C = {
-  pageBg:   '#080808',
-  cardBg:   '#111111',
-  elevated: '#1a1a1a',
-  iceBlue:  '#B2D3E6',
-  midBlue:  '#8FBCD4',
-  textSec:  '#A0A0A0',
-  borderDef:'#1F1F1F',
-  borderHov:'#2A2A2A',
-};
+const NAV_ITEMS = [
+  { id: 'home',    icon: Home,    path: '/' },
+  { id: 'explore', icon: Compass, path: '/explore' },
+  { id: 'center',  icon: Plus,    path: null }, // center create button
+  { id: 'reels',   icon: Film,    path: '/reels' },
+  { id: 'profile', icon: User,    path: '/profile' },
+];
 
 const Navbar = () => {
-  const { isCreatPostOpen, setIsCreatePostOpen, setIsCreateStoryOpen, isNotificationsOpen, setNotificationsOpen } = useContext(GeneralContext);
   const navigate = useNavigate();
-  const profilePic = localStorage.getItem('profilePic');
+  const location = useLocation();
+  const { setIsCreatePostOpen } = useContext(GeneralContext);
   const userId = localStorage.getItem('userId');
-  const [hovered, setHovered] = useState(null);
 
-  const iconStyle = (key) => ({
-    fontSize: 22,
-    color: hovered === key ? C.iceBlue : C.textSec,
-    cursor: 'pointer',
-    transition: 'color 0.2s ease',
-    padding: 10,
-    borderRadius: 8,
-    background: hovered === key ? 'rgba(178,211,230,0.06)' : 'transparent',
-  });
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 0, left: 0, right: 0,
-      background: 'rgba(8,8,8,0.92)',
-      backdropFilter: 'blur(12px)',
-      borderTop: `0.5px solid ${C.borderDef}`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-around',
-      padding: '8px 0',
-      zIndex: 100,
-    }}>
-      <BiHomeAlt
-        style={iconStyle('home')}
-        onMouseEnter={() => setHovered('home')}
-        onMouseLeave={() => setHovered(null)}
-        onClick={() => navigate('/')}
-      />
-      <BsChatSquareText
-        style={iconStyle('chat')}
-        onMouseEnter={() => setHovered('chat')}
-        onMouseLeave={() => setHovered(null)}
-        onClick={() => navigate('/chat')}
-      />
-      <CgAddR
-        style={iconStyle('create')}
-        onMouseEnter={() => setHovered('create')}
-        onMouseLeave={() => setHovered(null)}
-        onClick={() => { setIsCreatePostOpen(!isCreatPostOpen); setIsCreateStoryOpen(false); }}
-      />
-      <TbNotification
-        style={iconStyle('notify')}
-        onMouseEnter={() => setHovered('notify')}
-        onMouseLeave={() => setHovered(null)}
-        onClick={() => setNotificationsOpen(!isNotificationsOpen)}
-      />
-      <img
-        src={profilePic}
-        alt=""
-        onMouseEnter={() => setHovered('profile')}
-        onMouseLeave={() => setHovered(null)}
-        onClick={() => navigate(`/profile/${userId}`)}
-        style={{
-          width: 32, height: 32,
-          borderRadius: '50%',
-          objectFit: 'cover',
-          cursor: 'pointer',
-          border: `1.5px solid ${hovered === 'profile' ? C.iceBlue : C.borderHov}`,
-          transition: 'border-color 0.2s ease',
-        }}
-      />
-    </div>
+    <nav className="nx-navbar">
+      {NAV_ITEMS.map((item) => {
+        if (item.id === 'center') {
+          return (
+            <motion.button
+              key="center"
+              className="nx-nav-center-btn"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.9, rotate: 45 }}
+              onClick={() => setIsCreatePostOpen(true)}
+              title="Create post"
+            >
+              <Plus size={22} color="#fff" strokeWidth={2.5} />
+            </motion.button>
+          );
+        }
+
+        const active = isActive(item.path);
+        const Icon = item.icon;
+
+        return (
+          <motion.button
+            key={item.id}
+            className={`nx-nav-item ${active ? 'active' : ''}`}
+            whileTap={{ scale: 0.85 }}
+            onClick={() => {
+              if (item.id === 'profile') {
+                navigate(`/profile/${userId}`);
+              } else {
+                navigate(item.path);
+              }
+            }}
+            title={item.id}
+          >
+            <Icon
+              size={22}
+              strokeWidth={active ? 2.2 : 1.8}
+              fill={active && item.id === 'home' ? 'var(--accent)' : 'none'}
+            />
+          </motion.button>
+        );
+      })}
+    </nav>
   );
 };
 

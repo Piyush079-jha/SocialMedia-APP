@@ -1,174 +1,140 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { BiPlusCircle } from 'react-icons/bi';
-import { GeneralContext } from '../context/GeneralContextProvider';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
-import { RxCross2 } from 'react-icons/rx';
 
-const C = {
-  cardBg:    '#0f1525',
-  elevated:  '#151d30',
-  textPrim:  '#ffffff',
-  textSec:   '#8892aa',
-  textMuted: '#3d4a63',
-  blue:      '#4a7bff',
-  borderDef: 'rgba(255,255,255,0.06)',
-  borderHov: 'rgba(255,255,255,0.12)',
+const RING_CLASSES = ['story-ring-g1','story-ring-g2','story-ring-g3','story-ring-g4','story-ring-g5'];
+
+/* ── Full-screen Story Viewer ── */
+const StoryViewer = ({ users, startIdx, onClose }) => {
+  const [current, setCurrent] = useState(startIdx);
+  const [progress, setProgress] = useState(0);
+  const DURATION = 5000;
+
+  useEffect(() => {
+    setProgress(0);
+    const start = Date.now();
+    const id = setInterval(() => {
+      const pct = Math.min(((Date.now() - start) / DURATION) * 100, 100);
+      setProgress(pct);
+      if (pct >= 100) {
+        clearInterval(id);
+        if (current < users.length - 1) setCurrent(c => c + 1);
+        else onClose();
+      }
+    }, 50);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
+
+  useEffect(() => {
+    const h = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') { if (current < users.length - 1) setCurrent(c => c + 1); else onClose(); }
+      if (e.key === 'ArrowLeft') { if (current > 0) setCurrent(c => c - 1); }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
+
+  const user = users[current];
+  return (
+    <motion.div className="story-viewer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div
+        initial={{ scale: 0.88 }} animate={{ scale: 1 }} exit={{ scale: 0.88 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        style={{ position: 'relative', width: '100%', maxWidth: 360, height: 'min(640px,92dvh)', background: '#0d0f1a', borderRadius: 24, overflow: 'hidden', boxShadow: '0 40px 100px rgba(0,0,0,0.7)' }}
+      >
+        {/* Progress */}
+        <div style={{ position: 'absolute', top: 10, left: 12, right: 12, zIndex: 10, display: 'flex', gap: 4 }}>
+          {users.map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 2.5, background: 'rgba(255,255,255,0.25)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', background: '#fff', borderRadius: 2, width: i < current ? '100%' : i === current ? `${progress}%` : '0%' }} />
+            </div>
+          ))}
+        </div>
+        {/* Header */}
+        <div style={{ position: 'absolute', top: 20, left: 14, right: 14, zIndex: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src={user?.profilePic || ''} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.5)', background: '#333' }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', flex: 1 }}>{user?.username}</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: 4 }}><X size={18} /></button>
+        </div>
+        {/* Media / placeholder */}
+        <div style={{ width: '100%', height: '100%', background: `linear-gradient(160deg,${['#4F75FF22','#F59E0B22','#EC489922'][current % 3]} 0%,#0d0f1a 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {user?.profilePic
+            ? <img src={user.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.65 }} />
+            : <span style={{ fontSize: 72 }}>✨</span>}
+        </div>
+        <button onClick={() => { if (current > 0) setCurrent(c => c - 1); }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '35%', background: 'none', border: 'none' }} />
+        <button onClick={() => { if (current < users.length - 1) setCurrent(c => c + 1); else onClose(); }} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '35%', background: 'none', border: 'none' }} />
+      </motion.div>
+      {current > 0 && <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCurrent(c => c - 1)} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronLeft size={18} /></motion.button>}
+      {current < users.length - 1 && <motion.button whileTap={{ scale: 0.9 }} onClick={() => setCurrent(c => c + 1)} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronRight size={18} /></motion.button>}
+    </motion.div>
+  );
 };
 
+/* ══ STORIES STRIP ══ */
 const Stories = () => {
-  const { socket, setIsCreateStoryOpen } = useContext(GeneralContext);
-  const [stories, setStories] = useState([]);
-  const [isStoryPlaying, setIsStoryPlaying] = useState(false);
-  const [story, setStory] = useState();
-
-  useEffect(() => { fetchStories(); }, []);
-
-  const fetchStories = async () => {
-    try {
-      const response = await axios.get('http://localhost:6001/fetchAllStories');
-      setStories(response.data);
-    } catch (error) { console.error(error); }
+  const [users, setUsers] = useState([]);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIdx, setViewerIdx] = useState(0);
+  const me = {
+    _id: localStorage.getItem('userId'),
+    username: localStorage.getItem('username'),
+    profilePic: localStorage.getItem('profilePic'),
   };
 
-  const handleOpenStory = async (s) => {
-    setStory(s);
-    await socket.emit('story-played', { storyId: s._id, userId: localStorage.getItem('userId') });
-    setIsStoryPlaying(true);
-  };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data } = await axios.get('http://localhost:6001/fetchAllUsers');
+        setUsers((data ?? []).filter(u => u._id !== me._id));
+      } catch { /* silent */ }
+    };
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const all = [me, ...users.slice(0, 10)];
 
   return (
-    <div style={{
-      background: C.cardBg,
-      border: `1px solid ${C.borderDef}`,
-      borderRadius: '16px',
-      padding: '18px',
-      marginBottom: '14px',
-    }}>
-      <h3 style={{
-        fontSize: '11px', fontWeight: 600, color: C.textMuted,
-        margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: '0.1em',
-      }}>
-        Stories
-      </h3>
-
-      {!isStoryPlaying && (
-        <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
-
+    <>
+      <div className="stories-row">
+        <div className="stories-inner">
           {/* Add story */}
-          <div
-            onClick={() => setIsCreateStoryOpen(true)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', flexShrink: 0 }}
-          >
-            <div style={{
-              width: '54px', height: '54px', borderRadius: '50%',
-              border: `1.5px dashed rgba(74,123,255,0.5)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              position: 'relative', overflow: 'hidden',
-              background: C.elevated,
-            }}>
-              <img
-                src={localStorage.getItem('profilePic')} alt=""
-                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.35 }}
-              />
-              <BiPlusCircle style={{ position: 'absolute', fontSize: 22, color: '#4a7bff' }} />
-            </div>
-            <span style={{ fontSize: '11px', color: C.textMuted }}>Add</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <div className="story-add-btn"><Plus size={24} /></div>
+            <span className="story-name" style={{ color: 'var(--accent)', fontWeight: 600 }}>Your story</span>
           </div>
-
-          {/* Stories */}
-          {stories && stories
-            .filter(s => (
-              (localStorage.getItem('following').includes(s.userId) || s.userId === localStorage.getItem('userId'))
-              && Math.abs(Math.round((new Date().getTime() - new Date(s.createdAt).getTime()) / (1000 * 60 * 60))) < 24
-            ))
-            .map((s) => {
-              const viewed = s.viewers.includes(localStorage.getItem('userId'));
-              return (
-                <div
-                  key={s._id}
-                  onClick={() => handleOpenStory(s)}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', flexShrink: 0 }}
-                >
-                  <div style={{
-                    width: '54px', height: '54px', borderRadius: '50%',
-                    padding: '2px',
-                    background: viewed
-                      ? 'transparent'
-                      : 'linear-gradient(135deg, #4a7bff, #2d5ce8)',
-                    border: viewed ? `1.5px solid ${C.borderHov}` : 'none',
-                  }}>
-                    <img
-                      src={s.userPic} alt=""
-                      style={{
-                        width: '100%', height: '100%',
-                        borderRadius: '50%', objectFit: 'cover',
-                        border: `2px solid ${C.cardBg}`,
-                      }}
-                    />
-                  </div>
-                  <span style={{
-                    fontSize: '11px', color: C.textSec,
-                    maxWidth: '54px', textAlign: 'center',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {s.username}
-                  </span>
+          {/* Story circles */}
+          {all.map((user, i) => (
+            <motion.div
+              key={user._id || i}
+              className="story-circle"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.04 }}
+              onClick={() => { if (i > 0) { setViewerIdx(i - 1); setViewerOpen(true); } }}
+            >
+              <div className={`story-ring ${RING_CLASSES[i % RING_CLASSES.length]}`}>
+                <div className="story-avatar-wrap">
+                  <img src={user.profilePic || ''} alt={user.username} onError={e => { e.target.style.display = 'none'; }} />
                 </div>
-              );
-            })
-          }
-        </div>
-      )}
-
-      {/* Story player */}
-      {story && isStoryPlaying && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.92)',
-          zIndex: 400,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{
-            background: C.cardBg,
-            border: `1px solid ${C.borderHov}`,
-            borderRadius: '18px',
-            width: '340px', maxHeight: '88vh',
-            overflow: 'hidden',
-            display: 'flex', flexDirection: 'column',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 18px',
-              borderBottom: `1px solid ${C.borderDef}`,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src={story.userPic} alt="" style={{
-                  width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover',
-                  border: '1.5px solid rgba(74,123,255,0.5)',
-                }} />
-                <span style={{ fontSize: '13.5px', fontWeight: 600, color: C.textPrim }}>{story.username}</span>
               </div>
-              <RxCross2
-                onClick={() => setIsStoryPlaying(false)}
-                style={{ fontSize: 18, color: C.textSec, cursor: 'pointer' }}
-              />
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              {story.fileType === 'photo'
-                ? <img src={story.file} alt="" style={{ width: '100%', objectFit: 'cover' }} />
-                : <video controls autoPlay muted style={{ width: '100%' }}><source src={story.file} /></video>
-              }
-              {story.text && (
-                <p style={{ fontSize: '13.5px', color: C.textSec, padding: '14px 18px', margin: 0, lineHeight: 1.6 }}>
-                  {story.text}
-                </p>
-              )}
-            </div>
-          </div>
+              <span className="story-name">{i === 0 ? 'You' : user.username}</span>
+            </motion.div>
+          ))}
         </div>
-      )}
-    </div>
+      </div>
+
+      <AnimatePresence>
+        {viewerOpen && (
+          <StoryViewer users={users} startIdx={viewerIdx} onClose={() => setViewerOpen(false)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

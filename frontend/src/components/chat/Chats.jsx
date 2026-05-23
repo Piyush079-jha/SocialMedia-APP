@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState, useCallback } from 'react';
 import { GeneralContext } from '../../context/GeneralContextProvider';
 
 const Chats = () => {
-  const { socket, chatFirends, setChatFriends, dispatch, chatData } = useContext(GeneralContext);
+  const { socket, chatFriends, setChatFriends, dispatch, chatData } = useContext(GeneralContext);
   const userId = localStorage.getItem('userId');
   const [hovered, setHovered] = useState(null);
 
@@ -34,7 +34,7 @@ const Chats = () => {
       scrollbarWidth: 'none',
       msOverflowStyle: 'none',
     }}>
-      {chatFirends.length === 0 && (
+      {chatFriends && chatFriends.length === 0 && (
         <div style={{
           padding: '40px 20px',
           textAlign: 'center',
@@ -46,7 +46,7 @@ const Chats = () => {
         </div>
       )}
 
-      {chatFirends.map((data) => {
+      {chatFriends && chatFriends.map((data) => {
         const isActive = chatData.user?._id === data._id;
         const isHovered = hovered === data._id;
 

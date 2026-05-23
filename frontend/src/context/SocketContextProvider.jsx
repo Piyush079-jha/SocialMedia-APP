@@ -1,15 +1,21 @@
-import React, { createContext, useEffect, useState} from 'react';
+import { createContext, useContext } from 'react';
 import socketIoClient from 'socket.io-client';
 
+// One socket instance shared across the entire app
+export const socket = socketIoClient('http://localhost:6001', {
+  autoConnect: true,
+  reconnection: true,
+});
 
-export const SocketContext = createContext();
+export const SocketContext = createContext(null);
 
-const WS = 'http://localhost:6001';
+export const SocketContextProvider = ({ children }) => {
+  return (
+    <SocketContext.Provider value={{ socket }}>
+      {children}
+    </SocketContext.Provider>
+  );
+};
 
-const socket = socketIoClient(WS);
-
-export const SocketContextProvider =  ({children}) => {
-
-    <SocketContext.Provider  value={{socket}} >{children}</SocketContext.Provider>
-}
-
+// Convenience hook
+export const useSocket = () => useContext(SocketContext);

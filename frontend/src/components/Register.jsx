@@ -1,3 +1,4 @@
+// Register.jsx
 import React, { useContext, useState } from 'react';
 import { AuthenticationContext } from '../context/AuthenticationContextProvider';
 
@@ -12,13 +13,34 @@ const C = {
   borderAcc: 'rgba(74,123,255,0.5)',
 };
 
+const FIELDS = [
+  { label: 'Username',      field: 'username', type: 'text',     placeholder: 'your_username',    autoComplete: 'username',         minLength: 3 },
+  { label: 'Email address', field: 'email',    type: 'email',    placeholder: 'name@example.com', autoComplete: 'email',            minLength: undefined },
+  { label: 'Password',      field: 'password', type: 'password', placeholder: '••••••••',         autoComplete: 'new-password',     minLength: 6 },
+];
+
 const Register = ({ setIsLoginBox }) => {
   const { setUsername, setEmail, setPassword, register } = useContext(AuthenticationContext);
   const [focusedField, setFocusedField] = useState(null);
+  const [isSending, setIsSending]       = useState(false);
+  const [values, setValues]             = useState({ username: '', email: '', password: '' });
+
+  const setters = { username: setUsername, email: setEmail, password: setPassword };
+
+  const handleChange = (field, value) => {
+    setValues((prev) => ({ ...prev, [field]: value }));
+    setters[field](value);
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    await register();
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      await register();
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const inputStyle = (field) => ({
@@ -49,40 +71,43 @@ const Register = ({ setIsLoginBox }) => {
         Create account
       </h2>
 
-      {[
-        { label: 'Username', field: 'username', type: 'text', placeholder: 'your_username', setter: setUsername },
-        { label: 'Email address', field: 'email', type: 'email', placeholder: 'name@example.com', setter: setEmail },
-        { label: 'Password', field: 'password', type: 'password', placeholder: '••••••••', setter: setPassword },
-      ].map(({ label, field, type, placeholder, setter }) => (
+      {FIELDS.map(({ label, field, type, placeholder, autoComplete, minLength }) => (
         <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <label style={labelStyle}>{label}</label>
           <input
             type={type}
             placeholder={placeholder}
+            value={values[field]}
+            autoComplete={autoComplete}
+            minLength={minLength}
+            required
             style={inputStyle(field)}
             onFocus={() => setFocusedField(field)}
             onBlur={() => setFocusedField(null)}
-            onChange={(e) => setter(e.target.value)}
+            onChange={(e) => handleChange(field, e.target.value)}
           />
         </div>
       ))}
 
       <button
         type="submit"
+        disabled={isSending}
         style={{
           background: 'linear-gradient(135deg, #4a7bff, #2d5ce8)',
           color: '#ffffff', border: 'none',
           borderRadius: '10px', padding: '13px',
           fontSize: '14px', fontWeight: 600,
-          cursor: 'pointer', fontFamily: 'inherit',
+          cursor: isSending ? 'not-allowed' : 'pointer',
+          fontFamily: 'inherit',
           letterSpacing: '0.02em', marginTop: '4px',
           boxShadow: '0 4px 20px rgba(74,123,255,0.35)',
           transition: 'opacity 0.2s',
+          opacity: isSending ? 0.6 : 1,
         }}
-        onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
-        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        onMouseEnter={e => { if (!isSending) e.currentTarget.style.opacity = '0.88'; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = isSending ? '0.6' : '1'; }}
       >
-        Sign up
+        {isSending ? 'Creating account…' : 'Sign up'}
       </button>
 
       <p style={{ fontSize: '13px', color: C.textMuted, margin: 0, textAlign: 'center' }}>

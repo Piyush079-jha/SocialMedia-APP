@@ -1,5 +1,6 @@
-import React, { useContext, useRef, useState, useCallback } from 'react';
+import React, { useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { BiImageAdd } from 'react-icons/bi';
+import { Send } from 'lucide-react';
 import { GeneralContext } from '../../context/GeneralContextProvider';
 import { v4 as uuid } from 'uuid';
 import { getDownloadURL, ref as storageRef, uploadBytesResumable } from 'firebase/storage';
@@ -9,23 +10,30 @@ const MAX_FILE_SIZE_MB = 10;
 
 const Input = () => {
   const { socket, chatData } = useContext(GeneralContext);
-  const [text, setText] = useState('');
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [text, setText]               = useState('');
+  const [file, setFile]               = useState(null);
+  const [preview, setPreview]         = useState(null);
   const [uploadProgress, setUploadProgress] = useState(null);
-  const [isSending, setIsSending] = useState(false);
+  const [isSending, setIsSending]     = useState(false);
   const fileInputRef = useRef(null);
+  const textareaRef  = useRef(null);
   const userId = localStorage.getItem('userId');
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }, [text]);
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
     if (!selected) return;
-
     if (selected.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      alert(`File too large. Max size is ${MAX_FILE_SIZE_MB}MB.`);
+      alert(`File too large. Max ${MAX_FILE_SIZE_MB}MB.`);
       return;
     }
-
     setFile(selected);
     setPreview(URL.createObjectURL(selected));
   };
@@ -38,44 +46,34 @@ const Input = () => {
   }, []);
 
   const emitMessage = useCallback(async ({ fileUrl = '' } = {}) => {
-    const date = new Date();
     await socket.emit('new-message', {
       chatId: chatData.chatId,
       id: uuid(),
       text: text.trim(),
       file: fileUrl,
       senderId: userId,
-      date,
+      date: new Date(),
     });
     setText('');
     clearFile();
     setIsSending(false);
-  }, [socket, chatData.chatId, text, userId, clearFile]);
+  }, [socket, chatData?.chatId, text, userId, clearFile]);
 
   const handleSend = useCallback(async () => {
     const hasContent = text.trim() || file;
     if (!hasContent || isSending) return;
-
     setIsSending(true);
 
     if (file) {
-      const fileRef = storageRef(storage, `chat/${uuid()}`);
-      const uploadTask = uploadBytesResumable(fileRef, file);
-
-      uploadTask.on(
+      const ref = storageRef(storage, `chat/${uuid()}`);
+      const task = uploadBytesResumable(ref, file);
+      task.on(
         'state_changed',
-        (snapshot) => {
-          const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(Math.floor(pct));
-        },
-        (error) => {
-          console.error('Upload failed:', error);
-          setIsSending(false);
-          setUploadProgress(null);
-        },
+        snap => setUploadProgress(Math.floor((snap.bytesTransferred / snap.totalBytes) * 100)),
+        err  => { console.error(err); setIsSending(false); setUploadProgress(null); },
         async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          await emitMessage({ fileUrl: downloadURL });
+          const url = await getDownloadURL(task.snapshot.ref);
+          await emitMessage({ fileUrl: url });
           setUploadProgress(null);
         }
       );
@@ -98,67 +96,32 @@ const Input = () => {
       flexShrink: 0,
       background: '#0f1225',
       borderTop: '1px solid rgba(255,255,255,0.05)',
-      padding: '0',
+      paddingBottom: 'var(--safe-bottom, 0px)',
     }}>
-      {/* File preview strip */}
+      {/* File preview */}
       {preview && (
-        <div style={{
-          padding: '10px 16px 0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-        }}>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div style={{ padding: '10px 14px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ position: 'relative', display: 'inline-block', flexShrink: 0 }}>
             <img
               src={preview}
               alt="preview"
-              style={{
-                width: '52px',
-                height: '52px',
-                objectFit: 'cover',
-                borderRadius: '8px',
-                border: '1px solid rgba(109,86,255,0.25)',
-              }}
+              style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(109,86,255,0.25)', display: 'block' }}
             />
             <button
               onClick={clearFile}
               aria-label="Remove attachment"
               style={{
-                position: 'absolute',
-                top: '-6px',
-                right: '-6px',
-                width: '18px',
-                height: '18px',
-                borderRadius: '50%',
-                background: '#6d56ff',
-                border: 'none',
-                color: '#fff',
-                fontSize: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1,
+                position: 'absolute', top: -5, right: -5,
+                width: 18, height: 18, borderRadius: '50%',
+                background: '#6d56ff', border: 'none', color: '#fff',
+                fontSize: 10, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
-            >
-              ✕
-            </button>
+            >✕</button>
           </div>
           {uploadProgress !== null && (
-            <div style={{
-              flex: 1,
-              height: '3px',
-              background: 'rgba(255,255,255,0.08)',
-              borderRadius: '99px',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${uploadProgress}%`,
-                background: 'linear-gradient(90deg, #6d56ff, #4a35d4)',
-                transition: 'width 0.2s',
-                borderRadius: '99px',
-              }} />
+            <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'linear-gradient(90deg, #6d56ff, #4a35d4)', transition: 'width 0.2s', borderRadius: 99 }} />
             </div>
           )}
         </div>
@@ -167,12 +130,13 @@ const Input = () => {
       {/* Input row */}
       <div style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '12px 16px',
+        alignItems: 'flex-end',
+        gap: 8,
+        padding: 'clamp(8px, 2vw, 12px) clamp(10px, 3vw, 16px)',
       }}>
-        {/* Text input */}
+        {/* Textarea */}
         <textarea
+          ref={textareaRef}
           rows={1}
           placeholder="Write a message..."
           value={text}
@@ -182,32 +146,32 @@ const Input = () => {
             flex: 1,
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '12px',
-            padding: '10px 15px',
-            fontSize: '13.5px',
+            borderRadius: 12,
+            padding: 'clamp(8px, 2vw, 10px) clamp(10px, 3vw, 15px)',
+            fontSize: 'clamp(13px, 3.5vw, 13.5px)',
             color: '#e8e8ff',
             fontFamily: 'inherit',
             outline: 'none',
-            letterSpacing: '0.01em',
             resize: 'none',
             lineHeight: 1.5,
-            maxHeight: '120px',
+            maxHeight: 120,
             overflowY: 'auto',
             scrollbarWidth: 'none',
             transition: 'border-color 0.2s, background 0.2s',
           }}
           onFocus={e => {
-            e.target.style.borderColor = 'rgba(109,86,255,0.4)';
-            e.target.style.background = 'rgba(109,86,255,0.04)';
+            e.target.style.borderColor = 'rgba(109,86,255,0.45)';
+            e.target.style.background = 'rgba(109,86,255,0.05)';
           }}
           onBlur={e => {
             e.target.style.borderColor = 'rgba(255,255,255,0.07)';
             e.target.style.background = 'rgba(255,255,255,0.04)';
           }}
+          aria-label="Message input"
         />
 
         {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           {/* File picker */}
           <input
             ref={fileInputRef}
@@ -221,64 +185,57 @@ const Input = () => {
             htmlFor="chat-file"
             title="Attach image"
             style={{
-              width: '38px',
-              height: '38px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              borderRadius: '10px',
+              width: 38, height: 38,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', borderRadius: 10,
               border: '1px solid rgba(255,255,255,0.07)',
-              background: 'transparent',
-              transition: 'all 0.18s',
-              color: '#5a6280',
+              background: 'transparent', color: '#5a6280',
+              transition: 'all 0.18s', flexShrink: 0,
             }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'rgba(109,86,255,0.4)';
-              e.currentTarget.style.background = 'rgba(109,86,255,0.08)';
-              e.currentTarget.style.color = '#9d8aff';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = '#5a6280';
-            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(109,86,255,0.4)'; e.currentTarget.style.background='rgba(109,86,255,0.08)'; e.currentTarget.style.color='#9d8aff'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.07)'; e.currentTarget.style.background='transparent'; e.currentTarget.style.color='#5a6280'; }}
           >
-            <BiImageAdd size={18} />
+            <BiImageAdd size={17} />
           </label>
 
-          {/* Send button */}
+          {/* Send button — icon on mobile, text+icon on desktop */}
           <button
             onClick={handleSend}
             disabled={!canSend}
-            title="Send message (Enter)"
+            title="Send (Enter)"
             style={{
-              height: '38px',
-              padding: '0 20px',
-              background: canSend
-                ? 'linear-gradient(135deg, #6d56ff 0%, #4a35d4 100%)'
-                : 'rgba(255,255,255,0.05)',
-              color: canSend ? '#ffffff' : '#3a4260',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '13px',
-              fontWeight: 600,
+              height: 38,
+              padding: '0 clamp(10px, 3vw, 20px)',
+              background: canSend ? 'linear-gradient(135deg, #6d56ff, #4a35d4)' : 'rgba(255,255,255,0.05)',
+              color: canSend ? '#fff' : '#3a4260',
+              border: 'none', borderRadius: 12,
+              fontSize: 'clamp(12px, 3vw, 13px)', fontWeight: 600,
               cursor: canSend ? 'pointer' : 'not-allowed',
               fontFamily: 'inherit',
-              letterSpacing: '0.03em',
               boxShadow: canSend ? '0 4px 20px rgba(109,86,255,0.3)' : 'none',
-              transition: 'all 0.18s',
-              whiteSpace: 'nowrap',
+              transition: 'all 0.18s', whiteSpace: 'nowrap',
+              display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+              minWidth: 38,
             }}
-            onMouseEnter={e => { if (canSend) e.currentTarget.style.opacity = '0.88'; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-            onMouseDown={e => { if (canSend) e.currentTarget.style.transform = 'scale(0.96)'; }}
-            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onMouseDown={e => { if (canSend) e.currentTarget.style.transform='scale(0.96)'; }}
+            onMouseUp={e => { e.currentTarget.style.transform='scale(1)'; }}
+            aria-label="Send message"
           >
-            {isSending ? '…' : 'Send'}
+            {isSending ? '…' : (
+              <>
+                <Send size={14} />
+                <span style={{ display: 'var(--send-text-display, inline)' }}>Send</span>
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 360px) {
+          [aria-label="Send message"] span { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 };

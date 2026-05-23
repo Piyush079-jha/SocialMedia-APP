@@ -1,3 +1,4 @@
+// Login.jsx
 import React, { useContext, useState } from 'react';
 import { AuthenticationContext } from '../context/AuthenticationContextProvider';
 
@@ -17,11 +18,19 @@ const C = {
 const Login = ({ setIsLoginBox }) => {
   const { setEmail, setPassword, login } = useContext(AuthenticationContext);
   const [focusedField, setFocusedField] = useState(null);
-  const [hoveredBtn, setHoveredBtn] = useState(false);
+  const [isSending, setIsSending]       = useState(false);
+  const [emailVal, setEmailVal]         = useState('');
+  const [passVal, setPassVal]           = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    await login();
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      await login();
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const inputStyle = (field) => ({
@@ -35,6 +44,7 @@ const Login = ({ setIsLoginBox }) => {
     outline: 'none',
     transition: 'border-color 0.2s ease',
     boxSizing: 'border-box',
+    fontFamily: 'inherit',
   });
 
   return (
@@ -48,10 +58,12 @@ const Login = ({ setIsLoginBox }) => {
         <input
           type="email"
           placeholder="name@example.com"
+          value={emailVal}
+          autoComplete="email"
           style={inputStyle('email')}
           onFocus={() => setFocusedField('email')}
           onBlur={() => setFocusedField(null)}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => { setEmailVal(e.target.value); setEmail(e.target.value); }}
         />
       </div>
 
@@ -62,31 +74,35 @@ const Login = ({ setIsLoginBox }) => {
         <input
           type="password"
           placeholder="••••••••"
+          value={passVal}
+          autoComplete="current-password"
           style={inputStyle('password')}
           onFocus={() => setFocusedField('password')}
           onBlur={() => setFocusedField(null)}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => { setPassVal(e.target.value); setPassword(e.target.value); }}
         />
       </div>
 
       <button
         type="submit"
-        onMouseEnter={() => setHoveredBtn(true)}
-        onMouseLeave={() => setHoveredBtn(false)}
+        disabled={isSending}
         style={{
-          background: hoveredBtn ? C.iceBlue : C.deepBlue,
-          color: hoveredBtn ? C.deepBlue : C.iceBlue,
+          background: C.deepBlue,
+          color: C.iceBlue,
           border: `0.5px solid ${C.borderAcc}`,
           borderRadius: 8,
           padding: '12px',
           fontSize: 14,
           fontWeight: 600,
-          cursor: 'pointer',
-          transition: 'background 0.2s ease, color 0.2s ease',
+          cursor: isSending ? 'not-allowed' : 'pointer',
+          transition: 'background 0.2s ease, color 0.2s ease, opacity 0.2s',
           letterSpacing: '0.02em',
+          opacity: isSending ? 0.6 : 1,
         }}
+        onMouseEnter={e => { if (!isSending) { e.currentTarget.style.background = C.iceBlue; e.currentTarget.style.color = C.deepBlue; } }}
+        onMouseLeave={e => { e.currentTarget.style.background = C.deepBlue; e.currentTarget.style.color = C.iceBlue; }}
       >
-        Sign in
+        {isSending ? 'Signing in…' : 'Sign in'}
       </button>
 
       <p style={{ fontSize: 13, color: C.textMuted, margin: 0, textAlign: 'center' }}>
